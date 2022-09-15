@@ -1,2 +1,2 @@
-# atus-rec-demand
+# ATUS Recreation Demand 
 Using American Time Use Survey data to find recreation demand estimates. Research questions include 1) How recreation demand has changed in the last decade? 2) How does that change vary across racial demographics? 2) Can I use activity codes to determine type of park (local vs federal/state) and see how demand for those different parks has varied over time and across racial demographic groups?
