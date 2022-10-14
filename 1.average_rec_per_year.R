@@ -8,6 +8,7 @@ rm(list = ls())
 library(vroom)
 library(dplyr)
 library(ggplot2)
+library(tidyr)
 
 
 # -----------------------------------------------------------------------------
@@ -79,28 +80,50 @@ for (y in 3:21) {
 }
 
 # -----------------------------------------------------------------------------
-# plot
+# plots
 # -----------------------------------------------------------------------------
 
+# Country Averages  -------------------
+
 myAverages %>%
-  ggplot(aes(x = year)) +
-  # geom_point(colour = "black") +
-  geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = "grey", color = "darkred") +
-  geom_smooth(aes(y = avg_min_per_day_white), method = "lm", fill = NA, color = "darkblue") +
-  geom_smooth(aes(y = avg_min_per_day_black), method = "lm", fill = NA, color = "darkgreen") +
-  # geom_smooth(aes(y = avg_min_per_day_native), method = "lm", fill = NA, color = "purple") +
-  # geom_smooth(aes(y = avg_min_per_day_island), method = "lm", fill = NA, color = "coral") +
-  ggtitle("Time spent recreating varries by race", "The avg. American saw a ~7% increase in outdoor recreation") +
-  ylab("avg min recreating outside per day") +
+  ggplot(aes(x = year, y = avg_min_per_day)) +
+  geom_point(colour = "black", size = 3) +
+  geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = "grey", color = "darkred", size = 1.5) +
+  ggtitle("Time recreating may be increasing", "Recreation increased ~7% from 2003-2021") +
+  ylab("Minutes") +
   xlab("Year")+
   labs(caption = "Data Source: ATUS Microdata Activity Summary files, 2003-2021")+
   theme_bw() + 
   scale_colour_manual("", 
                       breaks = c("Population", "White", "Black"),
-                      values = c("darkred", "darkblue", "darkgreen"))
-# 
-summary(myAverages$avg_min_per_day)
+                      values = c("darkred", "darkblue", "darkgreen")) +
+  theme(text = element_text(size=30))
+ 
+ggsave(width = 11, height = 8, filename = "figures/country-average.jpeg")
 
+# Race -------------------
 
+#pivot long
+myAverages_thin <- myAverages %>%
+  select(year, avg_min_per_day, avg_min_per_day_black, avg_min_per_day_white)
 
-#NEED TO LABEL WHITE AND BLACK LINES!
+myAverages_long <- myAverages %>%
+  select(year, avg_min_per_day, avg_min_per_day_black, avg_min_per_day_white) %>%
+  rename(All = avg_min_per_day) %>%
+  rename(Black = avg_min_per_day_black) %>%
+  rename(White = avg_min_per_day_white) %>%
+  pivot_longer(cols = c(All, White, Black), values_to = "avg_min") %>%
+  select(year, name, avg_min) %>%
+  rename(Race = name)
+
+ggplot(myAverages_long, aes(x = year, y = avg_min, colour = Race)) +
+  geom_smooth(method = "lm", fill = "Grey", size = 1.5) +
+  ggtitle("Time recreating varries by race") +
+  ylab("Minutes") +
+  xlab("Year")+
+  labs(caption = "Data Source: ATUS Microdata Activity Summary files, 2003-2021")+
+  theme_bw() + 
+  theme(text = element_text(size=30))
+
+ggsave(width = 13, height = 8, filename = "figures/race-average.jpeg")
+
