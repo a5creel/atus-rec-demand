@@ -1,0 +1,106 @@
+---
+title: "First Pass Results "
+author: "Andie Creel"
+date: "2022-12-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r data}
+# -----------------------------------------------------------------------------
+# loading packages 
+# -----------------------------------------------------------------------------
+rm(list = ls())
+library(vroom)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(stringr)
+library(fixest)
+library(kableExtra)
+source('3.functions.R')
+
+
+# -----------------------------------------------------------------------------
+# reading in data
+# this should be make into a function where I can do it for each year, later
+# -----------------------------------------------------------------------------
+
+#read in activity file (daily diary)
+myAct_21_og <-vroom("raw_data/atusact-2021/atusact_2021.dat")
+
+# read in respondent file (has the weights)
+myResp_21_og <- vroom("raw_data/atusresp-2021/atusresp_2021.dat")
+
+# read in cps file (has state, fips info)
+myCPS_21_og <- vroom("raw_data/atuscps-2021/atuscps_2021.dat")
+
+# -----------------------------------------------------------------------------
+# data cleaning and construction 
+# -----------------------------------------------------------------------------
+
+#activity file (activities and duration)
+myAct <- clean_activity(myAct_21_og) %>%
+  get_duration()
+
+#cps (race, income, fips)
+myCPS <- clean_cps(myCPS_21_og) %>% # clean to relevant variables
+  get_income() # transform income from categories to numbers (low, mid, and upper estimates)
+
+#respondents (weights)
+myResp <- clean_resp(myResp_21_og)
+
+
+# merge
+myWorking <- left_join(myAct, myCPS, by = "id") %>%
+  left_join(myResp, by = "id")
+
+```
+
+
+# Initial Regression 
+
+```{r}
+
+# -----------------------------------------------------------------------------
+# Initial regression 
+# -----------------------------------------------------------------------------
+
+# need to log LHS
+myWorking$log_duration_rec <- log(myWorking$duration_rec)
+
+
+reg_1 <- feols(fml = log_duration_rec ~ duration_travel + family_income_mid, 
+               data = myWorking)
+reg_2 <- feols(fml = log_duration_rec ~ duration_travel + family_income_mid | fips_st,
+               data = myWorking)
+reg_3 <- feols(fml = log_duration_rec ~ duration_travel + family_income_low | fips_st,
+               data = myWorking)
+reg_4 <- feols(fml = log_duration_rec ~ duration_travel + family_income_up | fips_st,
+               data = myWorking)
+
+
+etable(reg_1,
+       reg_2,
+       reg_3,
+       reg_4,
+       signifCode = c("***"=0.01, "**"=0.05, "*"=0.10)) %>%
+  kbl(booktabs = T, caption = "Race") %>%
+  kable_styling(latex_options = c("scale_down","HOLD_position")) 
+
+
+```
+
+duration on travel increase duration recreating 
+
+NEXT STEPS 
+- Need to get count of trips.. bin travel time? 
+- demographic characteristics of people who travel for recreation (have code 1813) and those who report recreating somewhere other than home (13XX filter) but dont report traveling
+- figure out what to do with the minutes recreating on travel time.. fundamentally not a travel cost model. 
+
+
+

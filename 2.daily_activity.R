@@ -10,6 +10,7 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(stringr)
+library(fixest)
 
 
 # -----------------------------------------------------------------------------
@@ -76,7 +77,7 @@ myAct_21 <- myAct_21_og %>%
 
 
 # -----------------------------------------------------------------------------
-# Trying to pivot so I can regress minutes recreating on minutes traveled 
+# pivot so I can regress minutes recreating on minutes traveled 
 # -----------------------------------------------------------------------------
 
 #pivoting wider to inspect activity order (want to check for travel on both sides of recreation)
@@ -174,7 +175,110 @@ myResp <- myResp_21_og %>%
   rename(id = TUCASEID) %>% # ATUS Case ID (14-digit identifier)
   rename(weight = TUFINLWGT) # ATUS final weight
   
-myWorking_21 <- left_join(myWorking_21, myResp, by = "id")
+myWorking_21_og <- left_join(myWorking_21, myResp, by = "id")
+
+# -----------------------------------------------------------------------------
+# transform income out of bins
+# (NOTE: could later look at sensitivity to this and do upper bound??)
+# -----------------------------------------------------------------------------
+myWorking_21_og$test <- ifelse(myWorking_21_og$family_income == 6, 17500, myWorking_21_og$family_income) 
+
+# middle income
+myWorking_21 <- myWorking_21_og %>% 
+  mutate(family_income_mid = ifelse(family_income == -1, NA, family_income)) %>%
+  mutate(family_income_mid = ifelse(family_income == -2, NA, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == -3, NA, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 1, 2500, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 2, 6250, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 3, 8750, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 4, 11250, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 5, 13750, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 6, 17500, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 7, 22500, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 8, 27500, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 9, 32500, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 10, 37500, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 11, 45000, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 12, 55000, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 13, 67500, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 14, 87500, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 15, 125000, family_income_mid)) %>%
+  mutate(family_income_mid = ifelse(family_income == 16, 150000, family_income_mid)) # top one is entered as 150000 which is always an underestiamte
+  
+# lower bound -- guarantees this is an underestimate 
+myWorking_21 <- myWorking_21 %>% 
+  mutate(family_income_low = ifelse(family_income == -1, NA, family_income)) %>%
+  mutate(family_income_low = ifelse(family_income == -2, NA, family_income_low)) %>%
+  mutate(family_income_low = ifelse(family_income == -3, NA, family_income_low)) %>%
+  mutate(family_income_low = ifelse(family_income == 1, 1, family_income_low)) %>%
+  mutate(family_income_low = ifelse(family_income == 2, 5000, family_income_low)) %>%
+  mutate(family_income_low = ifelse(family_income == 3, 7500, family_income_low)) %>%
+  mutate(family_income_low = ifelse(family_income == 4, 10000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 5, 12500, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 6, 15000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 7, 20000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 8, 25000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 9, 30000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 10, 35000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 11, 40000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 12, 50000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 13, 60000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 14, 75000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 15, 100000, family_income_low)) %>%
+  mutate(family_income_low = if_else(family_income == 16, 150000, family_income_low)) # top one is entered as 150000 which is always an underestiamte
+
+# upper bound -- guarantees this is an underestimate 
+myWorking_21 <- myWorking_21 %>% 
+  mutate(family_income_up = ifelse(family_income == -1, NA, family_income)) %>%
+  mutate(family_income_up = ifelse(family_income == -2, NA, family_income_up)) %>%
+  mutate(family_income_up = ifelse(family_income == -3, NA, family_income_up)) %>%
+  mutate(family_income_up = ifelse(family_income == 1, 5000, family_income_up)) %>%
+  mutate(family_income_up = ifelse(family_income == 2, 7500, family_income_up)) %>%
+  mutate(family_income_up = ifelse(family_income == 3, 10000, family_income_up)) %>%
+  mutate(family_income_up = ifelse(family_income == 4, 12500, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 5, 15000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 6, 20000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 7, 25000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 8, 30000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 9, 35000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 10, 40000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 11, 50000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 12, 60000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 13, 75000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 14, 100000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 15, 150000, family_income_up)) %>%
+  mutate(family_income_up = if_else(family_income == 16, 150000, family_income_up)) # top one is entered as 150000 which is always an underestiamte
+
+
+# -----------------------------------------------------------------------------
+# first regressions
+# -----------------------------------------------------------------------------
+
+myWorking_21$log_duration_rec <- log(myWorking_21$duration_rec)
+
+reg_1 <- feols(fml = log_duration_rec ~ duration_travel + family_income, 
+               data = myWorking_21)
+
+reg_2 <- feols(fml = log_duration_rec ~ duration_travel + family_income | fips_st, 
+               data = myWorking_21)
+
+
+
+# seeing that recreation duration increases with travel duration. 
+# in berry et al, they looked at minutes outside on lime disease 
+# for us, of course you recreate more when you travel further. 
+# how it's set up now is missing the quantity of trips 
+
+# -----------------------------------------------------------------------------
+# scratch
+# -----------------------------------------------------------------------------
+
+#relationship between income and travel time 
+myWorking_21$income_10 <- myWorking_21$family_income/10000
+lm(data = myWorking_21, duration_travel ~ income_10)
+plot(myWorking_21$income_10, myWorking_21$duration_travel)
+
+
 
 
 # NEXT STEPS: 
