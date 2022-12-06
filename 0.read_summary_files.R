@@ -9,8 +9,6 @@ library(vroom)
 library(dplyr)
 library(data.table)
 
-
-
 # -----------------------------------------------------------------------------
 # reading in data 
 # -----------------------------------------------------------------------------
@@ -33,9 +31,10 @@ list_df <- list()
 
 # 2003 - 2017
 for (k in 3:17){
-  file_name <- paste0("curl https://www.bls.gov/tus/special.requests/atussum_20",if_else(k<10, paste0("0", k), paste0(k)),".zip | tar -xf- --to-stdout *.dat")
-  
-  list_df[[k]] <- fread(file_name)
+  # k <- 3
+  file_name <- paste0("curl https://www.bls.gov/tus/datafiles/atussum_20",if_else(k<10, paste0("0", k), paste0(k)),".zip | tar -xf- --to-stdout *.dat")
+
+  list_df[[k]] <- fread(cmd=file_name)
   
   #write data to raw data folder so I have it 
   vroom_write(list_df[[k]], paste0("raw_data/ATUS_2003-2021_Raw/", k,".csv"))
@@ -43,7 +42,7 @@ for (k in 3:17){
 
 # 2018 - 2021
 for (k in 18:21){
-  file_name <- paste0("curl https://www.bls.gov/tus/special.requests/atussum-20",if_else(k<10, paste0("0", k), paste0(k)),".zip | tar -xf- --to-stdout *.dat")
+  file_name <- paste0("curl https://www.bls.gov/tus/datafiles/atussum-20",if_else(k<10, paste0("0", k), paste0(k)),".zip | tar -xf- --to-stdout *.dat")
   
   list_df[[k]] <- fread(file_name)
   
@@ -87,6 +86,7 @@ myDataClean <- function(df, year){
   
   #creating sum of all recreation minutes
   myW$total_min_rec <-  apply(myW[,select(myW, starts_with("t1301"))], 1, sum) 
+  myW$total_min_travel <- apply(myW[,select(myW, starts_with("t1813"))], 1, sum) 
   
   #return
   myW
@@ -110,6 +110,6 @@ for (y in 3:21) {
   vroom_write(list_df_clean[[y]], myFile_name)
 }
 
-test<-list_df[[20]]
+
 
 
