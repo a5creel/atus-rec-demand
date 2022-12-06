@@ -259,6 +259,24 @@ NEXT STEPS
 
 # Lower Bound on Value of Recreation 
 
+```{r}
+
+# first doing it with 2021 
+
+# -----------------------------------------------------------------------------
+# Read in data and clean
+# -----------------------------------------------------------------------------
+
+my2021_og <- vroom("clean_data/ATUS_2003-2021/2021.csv") 
+
+# one third hourly wage rate for OC per hour. I calc per minute. 
+my2021 <- my2021_og %>%
+  select(household_id, race, week_earning, sample_weight, total_min_rec, total_min_travel) %>%
+  mutate(week_earning = ifelse(week_earning < 0 , NA, week_earning)) %>%
+  mutate(OC_time = round(week_earning / 40 * (1/3), 2)) %>% # oppotunity cost of time
+  mutate(OC_time_per_min = round(week_earning / 40 * (1/3)/60, 4))
+
+```
 
 
 

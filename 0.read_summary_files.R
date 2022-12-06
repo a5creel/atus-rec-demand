@@ -80,7 +80,8 @@ myDataClean <- function(df, year){
  
   myW <- df %>%
     rename(race = PTDTRACE) %>%
-    rename(week_earning = TRERNWA) %>%
+    rename(week_earning = TRERNWA) %>% # Weekly earnings (2 implied decimals) (found in summary do file)
+    mutate(week_earning = week_earning / 100) %>% # dealing with 2 implied decimals
     rename(household_id = TUCASEID) %>%
     select(household_id, race, week_earning, sample_weight, starts_with("t1301"), starts_with("t1813")) #Sports, Exercise, & Recreation
   
