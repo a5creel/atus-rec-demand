@@ -83,7 +83,7 @@ myDataClean <- function(df, year){
     rename(race = PTDTRACE) %>%
     rename(week_earning = TRERNWA) %>%
     rename(household_id = TUCASEID) %>%
-    select(household_id, race, week_earning, sample_weight, starts_with("t1301")) #Sports, Exercise, & Recreation
+    select(household_id, race, week_earning, sample_weight, starts_with("t1301"), starts_with("t1813")) #Sports, Exercise, & Recreation
   
   #creating sum of all recreation minutes
   myW$total_min_rec <-  apply(myW[,select(myW, starts_with("t1301"))], 1, sum) 
@@ -110,6 +110,6 @@ for (y in 3:21) {
   vroom_write(list_df_clean[[y]], myFile_name)
 }
 
-
+test<-list_df[[20]]
 
 
