@@ -292,7 +292,7 @@ sum(my2021$travel_cost_lower_bound_weighted, na.rm = TRUE) #20 million
 Next steps 
 - estimate mean and variance of travel_cost_lower_bound_NOTweighted 
     - estimate for white, black, etc. etc. 
-- multiply by population to get the lower bound esimate 
+- multiply by population to get the lower bound estimate 
 
 
 
