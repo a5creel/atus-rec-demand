@@ -2,9 +2,43 @@
 # Andie Creel 
 # Started on Dec. 1, 2022 
 
+# -----------------------------------------------------------------------------
+#  summary file functions 
+# -----------------------------------------------------------------------------
+
+# Where I got the calculation for average take spent recreating per day
+# In zotero: “American Time Use Survey User’s Guide,” 2022, 125.
+# uses the weights
+
+get_avg_rec_min <- function(df){
+  sum(df$sample_weight*df$total_min_rec)/sum(df$sample_weight)
+}
+
+
+get_avg_travel_cost <- function(df){
+  sum(df$sample_weight*df$indv_travel_cost)/sum(df$sample_weight)
+}
+
+# this works but is insanely slow. 
+get_standard_error <- function(df, year = y){
+  # y <- 21
+  # df <- myTC_files[[y-2]]
+  
+  myWeights <- vroom(paste0("raw_data/ATUS_2003-2021_Replicate_weights/", y, ".csv")) 
+  myDf <- left_join(df, myWeights, by = c("household_id" = "TUCASEID"))
+  
+  for (i in 1:nrow(myDf)) {
+    tc_num <- as.numeric(myDf[i,9])
+    myDf[i,11:170] <- myDf[i,11:170]*tc_num
+  }
+  myDf
+}
+
+
+
 
 # -----------------------------------------------------------------------------
-#  variable selection from activity file
+#  variable selection from activity file: Daily diary functions 
 # -----------------------------------------------------------------------------
 
 clean_activity <- function(df) {

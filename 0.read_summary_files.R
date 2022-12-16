@@ -112,5 +112,40 @@ for (y in 3:21) {
 }
 
 
+# -----------------------------------------------------------------------------
+# pulling in replicate weights to get standard errors
+# -----------------------------------------------------------------------------
+
+
+# List to store all replicate weight files 
+replicate_list <- list() 
+
+# 2003 - 2017
+for (k in 3:17){
+
+  file_name <- paste0("curl https://www.bls.gov/tus/datafiles/atuswgts_20",if_else(k<10, paste0("0", k), paste0(k)),".zip | tar -xf- --to-stdout *.dat")
+  
+  replicate_list[[k]] <- fread(cmd=file_name)
+  
+  #write data to raw data folder so I have it 
+  vroom_write(replicate_list[[k]], paste0("raw_data/ATUS_2003-2021_Replicate_weights/", k,".csv"))
+}
+
+
+# 2018 - 2021
+for (k in 18:21){
+
+  file_name <- paste0("curl https://www.bls.gov/tus/datafiles/atuswgts-20",if_else(k<10, paste0("0", k), paste0(k)),".zip | tar -xf- --to-stdout *.dat")
+  
+  replicate_list[[k]] <- fread(cmd=file_name)
+  
+  #write data to raw data folder so I have it 
+  vroom_write(replicate_list[[k]], paste0("raw_data/ATUS_2003-2021_Replicate_weights/", k,".csv"))
+  
+}
+
+
+
+
 
 

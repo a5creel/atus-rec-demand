@@ -33,26 +33,15 @@ This is NOT conditioned on people who recreate.
 # -----------------------------------------------------------------------------
 # reading in data
 # -----------------------------------------------------------------------------
-myList <- list()
+mySummary_files <- list()
 
 for (k in 3:21){
 
   myFile <- paste0("clean_data/ATUS_2003-2021/", 2000 + k, ".csv")
-  myList[[k]] <- vroom(myFile)
+  mySummary_files[[k]] <- vroom(myFile)
   
 }
 
-# -----------------------------------------------------------------------------
-# function
-# -----------------------------------------------------------------------------
-
-# Where I got the calculation for average take spent recreating per day
-# In zotero: “American Time Use Survey User’s Guide,” 2022, 125.
-# uses the weights
-
-get_avg_rec_min <- function(df){
-  sum(df$sample_weight*df$total_min_rec)/sum(df$sample_weight)
-}
 
 # -----------------------------------------------------------------------------
 # make data frame with averages
@@ -66,7 +55,7 @@ myAverages <- data.frame(year = myYear, avg_min_per_day = NA)
 # -----------------------------------------------------------------------------
 
 for (y in 3:21) {
-  myAverages$avg_min_per_day[y-2] <- get_avg_rec_min(myList[[y]])
+  myAverages$avg_min_per_day[y-2] <- get_avg_rec_min(mySummary_files[[y]])
   
   # break down by race
   # 1 White only
@@ -78,7 +67,7 @@ for (y in 3:21) {
   
   myRaceList <- list()
   for (r in 1:5) {
-    myRaceList[[r]] <- myList[[y]] %>%
+    myRaceList[[r]] <- mySummary_files[[y]] %>%
       select(household_id, race, week_earning, sample_weight, total_min_rec) %>% 
       filter(race == r)
     
@@ -127,7 +116,7 @@ This increasing trend may actually be driven by the COVID bump in 2020, and ther
 ```{r, echo=FALSE, message=FALSE}
 # Race -------------------
 
-#pivot long
+#pivot long to make graphs
 myAverages_thin <- myAverages %>%
   select(year, avg_min_per_day, avg_min_per_day_black, avg_min_per_day_white)
 
@@ -266,7 +255,7 @@ NEXT STEPS
 # first doing it with 2021 
 
 # -----------------------------------------------------------------------------
-# Read in data and clean
+# TESTS
 # -----------------------------------------------------------------------------
 
 #from data clean (these are the summary files, not the daily diary)
@@ -278,14 +267,36 @@ my2021 <- my2021_og %>%
   mutate(week_earning = ifelse(week_earning < 0 , NA, week_earning)) %>%
   mutate(OC_time_per_hour = round(week_earning / 40 * (1/3), 2)) %>% # opportunity cost of time
   mutate(OC_time_per_min = round(OC_time_per_hour/60, 4)) %>%
-  mutate(travel_cost_lower_bound_NOTweighted = OC_time_per_min*total_min_travel) %>%
-  mutate(travel_cost_lower_bound_weighted = travel_cost_lower_bound_NOTweighted*sample_weight)
+  mutate(indv_travel_cost = OC_time_per_min*total_min_travel) %>%
+  filter(!is.na(indv_travel_cost)) %>% # a lot of people don't report their income 
+  mutate(travel_cost_weight_0 = indv_travel_cost*sample_weight) 
 
 #48% of people don't report their income :( 
 round(sum(is.na(my2021$week_earning))/length(my2021$week_earning), 2) 
 
 #sum of oc_travel lower bound
-sum(my2021$travel_cost_lower_bound_weighted, na.rm = TRUE) #20 million 
+sum(my2021$travel_cost_lower_bound_weighted, na.rm = TRUE) #20 million, but 50% are missing 
+
+
+# -----------------------------------------------------------------------------
+# get ready to do standard erros. 
+# -----------------------------------------------------------------------------
+
+
+myWeights <- vroom("raw_data/ATUS_2003-2021_Replicate_weights/21.csv") 
+
+myTest_21 <- left_join(my2021, myWeights, by = c("household_id" = "TUCASEID"))
+
+myTest_21 <- myTest_21 
+for (i in 1:length(myTest_21)) {
+  tc_num <- as.numeric(myTest_21[i,9])
+  myTest_21[i,11:170] <- myTest_21[i,11:170]*tc_num
+}
+
+# get_standard_error() is written but the loop is super duper slow. May need to figure out better way or run on plan and store dataframes! 
+
+#next step, the actual calculation (probably need to pivot longer... that may be the better way to speed things up as well!!) Next steps, rethink with the pivot longer 
+
 
 
 ```
@@ -294,6 +305,110 @@ Next steps
     - estimate for white, black, etc. etc. 
 - multiply by population to get the lower bound estimate 
 
+
+```{r, echo = FALSE, message=FALSE}
+
+
+# -----------------------------------------------------------------------------
+# get average travel cost and SE for whole country and each race
+# -----------------------------------------------------------------------------
+# Have already read all summary file into mySummary_files
+# Functions are in files 
+# myAverages data frame already exists 
+
+# -----------------------------------------------------------------------------
+# clean each year's data 
+# -----------------------------------------------------------------------------
+
+myTC_files <- list()
+
+for (y in 3:21) {
+ myTC_files[[y-2]] <- mySummary_files[[y]]  %>%
+    select(household_id, race, week_earning, sample_weight, total_min_rec, total_min_travel) %>%
+    mutate(week_earning = ifelse(week_earning < 0 , NA, week_earning)) %>%
+    mutate(OC_time_per_hour = round(week_earning / 40 * (1/3), 2)) %>% # opportunity cost of time
+    mutate(OC_time_per_min = round(OC_time_per_hour/60, 4)) %>%
+    mutate(indv_travel_cost = OC_time_per_min*total_min_travel) %>%
+    mutate(year = 2000 + y) %>%
+    filter(!is.na(indv_travel_cost)) %>%
+    mutate(travel_cost_weight_0 = indv_travel_cost*sample_weight) 
+
+  
+}
+
+
+# -----------------------------------------------------------------------------
+# break down by race
+# -----------------------------------------------------------------------------
+
+myAverages_TC <- data.frame(year = myYear)
+
+for (y in 3:21) {
+  
+  #national average
+  myAverages_TC$avg_travel_cost[y-2] <- get_avg_travel_cost(myTC_files[[y-2]])
+  
+  # break down by race ----
+  # 1 White only
+  # 2 Black only
+  # 3 American Indian, Alaskan Native only
+  # 4 Asian only
+  # 5 Hawaiian/Pacific Islander only 
+  # https://www.bls.gov/tus/atuscpscodebk14.pdf
+  #----
+  
+  #average broken down by race 
+  myRaceList <- list()
+  for (r in 1:5) {
+    myDF_temp <-myTC_files[[y-2]] %>%
+      filter(race == r)
+    
+    if (r == 1){
+      myAverages_TC$avg_travel_cost_white[y-2] <- get_avg_travel_cost(myDF_temp)
+    } else if (r == 2){
+      myAverages_TC$avg_travel_cost_black[y-2] <- get_avg_travel_cost(myDF_temp)
+    } else if (r == 3){
+      myAverages_TC$avg_travel_cost_native[y-2] <- get_avg_travel_cost(myDF_temp)
+    } else if (r == 4){
+      myAverages_TC$avg_travel_cost_asian[y-2] <- get_avg_travel_cost(myDF_temp)
+    } else if (r == 5){
+      myAverages_TC$avg_travel_cost_island[y-2] <- get_avg_travel_cost(myDF_temp)
+    }
+   
+     rm(myDF_temp) # should be getting replaced, but just to make sure
+  }
+}
+
+
+
+
+
+
+
+
+
+# -----------------------------------------------------------------------------
+# plots
+# -----------------------------------------------------------------------------
+
+# # Country Averages  -------------------
+# 
+# myAverages_TC %>%
+#   ggplot(aes(x = year, y = avg_min_per_day)) +
+#   geom_point(colour = "black", size = 3) +
+#   geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = "grey", color = "darkred", size = 1.5) +
+#   ggtitle("Time recreating may be increasing", "Recreation increased ~7% from 2003-2021") +
+#   ylab("Minutes") +
+#   xlab("Year")+
+#   labs(caption = "Data Source: ATUS Microdata Activity Summary files, 2003-2021")+
+#   theme_bw() + 
+#   scale_colour_manual("", 
+#                       breaks = c("Population", "White", "Black"),
+#                       values = c("darkred", "darkblue", "darkgreen")) +
+#   theme(text = element_text(size=17))
+#  
+# ggsave(width = 11, height = 8, filename = "figures/country-average.jpeg")
+```
 
 
 
