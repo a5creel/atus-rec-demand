@@ -8,6 +8,8 @@ rm(list = ls())
 library(vroom)
 library(dplyr)
 library(data.table)
+library(blscrapeR) # pulls consumer price index
+
 
 # -----------------------------------------------------------------------------
 # reading in data 
@@ -120,8 +122,18 @@ for (y in 3:21) {
 # List to store all replicate weight files 
 replicate_list <- list() 
 
-# 2003 - 2017
-for (k in 3:17){
+#2003 is weird
+file_name <- paste0("curl https://www.bls.gov/tus/datafiles/atuswgts06wt_2003.zip | tar -xf- --to-stdout *.dat")
+
+replicate_list[[3]] <- fread(cmd=file_name)
+
+#write data to raw data folder so I have it 
+vroom_write(replicate_list[[3]], paste0("raw_data/ATUS_2003-2021_Replicate_weights/3.csv"))
+
+
+
+# 2004 - 2017
+for (k in 4:17){
 
   file_name <- paste0("curl https://www.bls.gov/tus/datafiles/atuswgts_20",if_else(k<10, paste0("0", k), paste0(k)),".zip | tar -xf- --to-stdout *.dat")
   
@@ -144,7 +156,13 @@ for (k in 18:21){
   
 }
 
+# -----------------------------------------------------------------------------
+# inflation adjustment
+# -----------------------------------------------------------------------------
 
+# Consumer price index, uses package blscrapeR : https://github.com/keberwein/blscrapeR
+inflationStuff <- inflation_adjust(2021)
+vroom_write(inflationStuff, "clean_data/inflation_rates.csv")
 
 
 

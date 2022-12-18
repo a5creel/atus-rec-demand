@@ -38,8 +38,15 @@ mySummary_files <- list()
 for (k in 3:21){
 
   myFile <- paste0("clean_data/ATUS_2003-2021/", 2000 + k, ".csv")
-  mySummary_files[[k]] <- vroom(myFile)
+  mySummary_files[[k]] <- vroom(myFile) %>%
+    mutate(year = 2000+k) # add in year
   
+  #adjust for inflation, in 2021 dollars
+  myInf <- vroom("clean_data/inflation_rates.csv")
+  
+  mySummary_files[[k]] <- left_join(mySummary_files[[k]], myInf, by = "year") %>%
+    mutate(week_earning_nominal = week_earning) %>%
+    mutate(week_earning = week_earning_nominal/adj_value)
 }
 
 
@@ -96,7 +103,7 @@ for (y in 3:21) {
 myAverages %>%
   ggplot(aes(x = year, y = avg_min_per_day)) +
   geom_point(colour = "black", size = 3) +
-  geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = "grey", color = "darkred", size = 1.5) +
+  geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = NA, color = "darkred", size = 1.5) +
   ggtitle("Time recreating may be increasing", "Recreation increased ~7% from 2003-2021") +
   ylab("Minutes") +
   xlab("Year")+
@@ -130,7 +137,7 @@ myAverages_long <- myAverages %>%
   rename(Race = name)
 
 ggplot(myAverages_long, aes(x = year, y = avg_min, colour = Race)) +
-  geom_smooth(method = "lm", fill = "Grey", size = 1.5) +
+  geom_smooth(method = "lm", fill = NA, size = 1.5) +
   ggtitle("Time recreating varries by race") +
   ylab("Minutes") +
   xlab("Year")+
@@ -235,6 +242,8 @@ etable(reg_1,
   kbl(booktabs = T, caption = "Race") %>%
   kable_styling(latex_options = c("scale_down","HOLD_position")) 
 
+rm(reg_1, reg_2, reg_3, reg_4)
+
 
 ```
 
@@ -245,64 +254,10 @@ This is not the model necessary to estimate a demand curve needed for welfare es
 NEXT STEPS 
 
 - demographic characteristics of people who travel for recreation (have code 1813) and those who report recreating somewhere other than home (13XX filter) but don't report traveling
-- figure out what to do with the minutes recreating on travel time.. fundamentally not a travel cost model. 
-- Lower bound 
 
 # Lower Bound on Value of Recreation 
 
-```{r}
 
-# first doing it with 2021 
-
-# -----------------------------------------------------------------------------
-# TESTS
-# -----------------------------------------------------------------------------
-
-#from data clean (these are the summary files, not the daily diary)
-my2021_og <- vroom("clean_data/ATUS_2003-2021/2021.csv") 
-
-# one third hourly wage rate for OC per hour. I calc per minute. 
-my2021 <- my2021_og %>%
-  select(household_id, race, week_earning, sample_weight, total_min_rec, total_min_travel) %>%
-  mutate(week_earning = ifelse(week_earning < 0 , NA, week_earning)) %>%
-  mutate(OC_time_per_hour = round(week_earning / 40 * (1/3), 2)) %>% # opportunity cost of time
-  mutate(OC_time_per_min = round(OC_time_per_hour/60, 4)) %>%
-  mutate(indv_travel_cost = OC_time_per_min*total_min_travel) %>%
-  filter(!is.na(indv_travel_cost)) %>% # a lot of people don't report their income 
-  mutate(travel_cost_weight_0 = indv_travel_cost*sample_weight) 
-
-#48% of people don't report their income :( 
-round(sum(is.na(my2021$week_earning))/length(my2021$week_earning), 2) 
-
-#sum of oc_travel lower bound
-sum(my2021$travel_cost_lower_bound_weighted, na.rm = TRUE) #20 million, but 50% are missing 
-
-
-# -----------------------------------------------------------------------------
-# get ready to do standard erros. 
-# -----------------------------------------------------------------------------
-
-
-myWeights <- vroom("raw_data/ATUS_2003-2021_Replicate_weights/21.csv") 
-
-myTest_21 <- left_join(my2021, myWeights, by = c("household_id" = "TUCASEID"))
-
-myTest_21 <- myTest_21 
-for (i in 1:length(myTest_21)) {
-  tc_num <- as.numeric(myTest_21[i,9])
-  myTest_21[i,11:170] <- myTest_21[i,11:170]*tc_num
-}
-
-# get_standard_error() is written but the loop is super duper slow. May need to figure out better way or run on plan and store dataframes! 
-
-#next step, the actual calculation (probably need to pivot longer... that may be the better way to speed things up as well!!) Next steps, rethink with the pivot longer 
-
-
-
-```
-Next steps 
-- estimate mean and variance of travel_cost_lower_bound_NOTweighted 
-    - estimate for white, black, etc. etc. 
 - multiply by population to get the lower bound estimate 
 
 
@@ -321,27 +276,33 @@ Next steps
 # -----------------------------------------------------------------------------
 
 myTC_files <- list()
+myAverages_TC <- data.frame(year = numeric(),
+                            avg_travel_cost_0 = numeric(),
+                            variance = numeric(),
+                            standard_error = numeric())
 
-for (y in 3:21) {
+for (y in 5:21) {
+  
  myTC_files[[y-2]] <- mySummary_files[[y]]  %>%
     select(household_id, race, week_earning, sample_weight, total_min_rec, total_min_travel) %>%
     mutate(week_earning = ifelse(week_earning < 0 , NA, week_earning)) %>%
     mutate(OC_time_per_hour = round(week_earning / 40 * (1/3), 2)) %>% # opportunity cost of time
     mutate(OC_time_per_min = round(OC_time_per_hour/60, 4)) %>%
     mutate(indv_travel_cost = OC_time_per_min*total_min_travel) %>%
-    mutate(year = 2000 + y) %>%
-    filter(!is.na(indv_travel_cost)) %>%
-    mutate(travel_cost_weight_0 = indv_travel_cost*sample_weight) 
-
-  
+    filter(!is.na(indv_travel_cost)) %>% # a lot of people don't report their income 
+    # need to do this here before next step, numerator
+    mutate(avg_travel_cost_0 = sum(indv_travel_cost*sample_weight)/sum(sample_weight)) #y^hat_0
+ 
+ myAverages_TC <- bind_rows(myAverages_TC, get_SE(myTC_files[[y-2]], y))
 }
+
 
 
 # -----------------------------------------------------------------------------
 # break down by race
 # -----------------------------------------------------------------------------
 
-myAverages_TC <- data.frame(year = myYear)
+
 
 for (y in 3:21) {
   
@@ -381,12 +342,6 @@ for (y in 3:21) {
 
 
 
-
-
-
-
-
-
 # -----------------------------------------------------------------------------
 # plots
 # -----------------------------------------------------------------------------
@@ -411,7 +366,7 @@ for (y in 3:21) {
 ```
 
 
-
+2003 and 2004 dont have weekly earnings
 
 
 

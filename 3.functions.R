@@ -19,6 +19,47 @@ get_avg_travel_cost <- function(df){
   sum(df$sample_weight*df$indv_travel_cost)/sum(df$sample_weight)
 }
 
+get_SE <- function(df, y){
+  #REMEMBER TO DELETE
+  # y <- 20
+  
+  #read in replicate weights
+  myWeights <- vroom(paste0("raw_data/ATUS_2003-2021_Replicate_weights/", y, ".csv"))
+  
+  #merge cleaned summary file weights 
+  myMerge <- left_join(df, myWeights, by = c("household_id" = "TUCASEID"))
+  
+  #pivoting longer
+  if(y != 20){
+    myMerge_long <- pivot_longer(myMerge, cols = c(starts_with("FINLWGT")), 
+                               names_to = "weight_name", 
+                               values_to = "replicate_weight" ) 
+  } else{
+    myMerge_long <- pivot_longer(myMerge, cols = c(starts_with("TU20FWGT")), 
+                                 names_to = "weight_name", 
+                                 values_to = "replicate_weight" )  
+  }
+  
+  #getting average travel cost for each weight, y^hat_i
+  mySE_df <- myMerge_long %>%
+    group_by(weight_name) %>%
+    mutate(avg_travel_cost_i = sum(indv_travel_cost*replicate_weight)/sum(replicate_weight))%>%
+    ungroup()
+  
+  #clean to y^hat_0 and y^hat_i
+  mySE <- mySE_df %>%
+    select(avg_travel_cost_0, avg_travel_cost_i) %>%
+    distinct() %>%
+    mutate(difference = avg_travel_cost_0 - avg_travel_cost_i) %>%
+    mutate(square = difference*difference) %>%
+    mutate(variance = (4/160)*sum(square)) %>%
+    mutate(standard_error = sqrt(variance)) %>%
+    select(avg_travel_cost_0, variance, standard_error) %>%
+    distinct() %>%
+    mutate(year = 2000+y)
+}
+
+
 # this works but is insanely slow. 
 get_standard_error <- function(df, year = y){
   # y <- 21
