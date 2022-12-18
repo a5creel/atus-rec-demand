@@ -263,16 +263,15 @@ NEXT STEPS
 
 ```{r, echo = FALSE, message=FALSE}
 
-
 # -----------------------------------------------------------------------------
 # get average travel cost and SE for whole country and each race
 # -----------------------------------------------------------------------------
-# Have already read all summary file into mySummary_files
+# Have already read all summary file into mySummary_files (already inflation adjusted)
 # Functions are in files 
-# myAverages data frame already exists 
+
 
 # -----------------------------------------------------------------------------
-# clean each year's data 
+# get average travel cost per day per person and SE for each year
 # -----------------------------------------------------------------------------
 
 myTC_files <- list()
@@ -282,19 +281,57 @@ myAverages_TC <- data.frame(year = numeric(),
                             standard_error = numeric())
 
 for (y in 5:21) {
-  
+
+  #travel cost cleaning 
  myTC_files[[y-2]] <- mySummary_files[[y]]  %>%
     select(household_id, race, week_earning, sample_weight, total_min_rec, total_min_travel) %>%
-    mutate(week_earning = ifelse(week_earning < 0 , NA, week_earning)) %>%
-    mutate(OC_time_per_hour = round(week_earning / 40 * (1/3), 2)) %>% # opportunity cost of time
+  
+    #don't have weekly earnings for like 50% of people
+    mutate(week_earning = ifelse(week_earning < 0 , NA, week_earning)) %>% 
+    filter(!is.na(week_earning)) %>% 
+   
+   # opportunity cost of time
+    mutate(OC_time_per_hour = round(week_earning / 40 * (1/3), 2)) %>% 
     mutate(OC_time_per_min = round(OC_time_per_hour/60, 4)) %>%
+   
+   #travel cost incurred per min reported traveling for recreation (nuemrator of mean)
     mutate(indv_travel_cost = OC_time_per_min*total_min_travel) %>%
-    filter(!is.na(indv_travel_cost)) %>% # a lot of people don't report their income 
-    # need to do this here before next step, numerator
+    
+    # average travel cost !
     mutate(avg_travel_cost_0 = sum(indv_travel_cost*sample_weight)/sum(sample_weight)) #y^hat_0
  
+ #get standard errors 
  myAverages_TC <- bind_rows(myAverages_TC, get_SE(myTC_files[[y-2]], y))
+ 
+ 
 }
+
+# -----------------------------------------------------------------------------
+# back of envelope calculations 
+# -----------------------------------------------------------------------------
+
+# need to get population, do variance transformation 
+myPop <- vroom("clean_data/USA_pop.csv")
+
+myAverages_TC_calcs <- left_join(myAverages_TC, myPop, by = "year") %>%
+  mutate(annual_TC_value = avg_travel_cost_0*population*365) %>%
+  mutate(annual_TC_variance = (avg_travel_cost_0*population)^2*variance) %>%
+  mutate(annual_TC_SE = sqrt(annual_TC_variance)) %>%
+  mutate(annual_TC_CI = 1.96*annual_TC_SE)
+
+
+
+# -----------------------------------------------------------------------------
+# Graph
+# -----------------------------------------------------------------------------
+# Use 95% confidence interval instead of SEM
+ggplot(myAverages_TC_calcs, aes(x=year, y=annual_TC_value)) + 
+    geom_errorbar(aes(ymin=annual_TC_value-annual_TC_CI, 
+                      ymax=annual_TC_value+annual_TC_CI), width=.1, position=pd) +
+    geom_line(position=pd) +
+    geom_point(position=pd)
+
+
 
 
 
@@ -367,6 +404,8 @@ for (y in 3:21) {
 
 
 2003 and 2004 dont have weekly earnings
+
+making the assumption that people who report their weekly earnings are representative of those who dont
 
 
 

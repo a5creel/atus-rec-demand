@@ -164,6 +164,15 @@ for (k in 18:21){
 inflationStuff <- inflation_adjust(2021)
 vroom_write(inflationStuff, "clean_data/inflation_rates.csv")
 
+# -----------------------------------------------------------------------------
+# US population by year
+# -----------------------------------------------------------------------------
 
+myPop <-vroom("raw_data/world_bank_us_pop/API_SP.POP.TOTL_DS2_en_csv_v2_4760264.csv") %>%
+  filter(`Country Code` == "USA") %>%
+  pivot_longer(cols = c(starts_with("19") |starts_with("20")), names_to = "year", values_to = "population") %>%
+  mutate(country = `Country Code`) %>%
+  select(country, year, population)
 
+vroom_write(myPop, "clean_data/USA_pop.csv")
 
