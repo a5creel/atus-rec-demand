@@ -20,8 +20,6 @@ get_avg_travel_cost <- function(df){
 }
 
 get_SE <- function(df, y){
-  #REMEMBER TO DELETE
-  # y <- 20
   
   #read in replicate weights
   myWeights <- vroom(paste0("raw_data/ATUS_2003-2021_Replicate_weights/", y, ".csv"))
@@ -58,24 +56,6 @@ get_SE <- function(df, y){
     distinct() %>%
     mutate(year = 2000+y)
 }
-
-
-# this works but is insanely slow. 
-get_standard_error <- function(df, year = y){
-  # y <- 21
-  # df <- myTC_files[[y-2]]
-  
-  myWeights <- vroom(paste0("raw_data/ATUS_2003-2021_Replicate_weights/", y, ".csv")) 
-  myDf <- left_join(df, myWeights, by = c("household_id" = "TUCASEID"))
-  
-  for (i in 1:nrow(myDf)) {
-    tc_num <- as.numeric(myDf[i,9])
-    myDf[i,11:170] <- myDf[i,11:170]*tc_num
-  }
-  myDf
-}
-
-
 
 
 # -----------------------------------------------------------------------------
