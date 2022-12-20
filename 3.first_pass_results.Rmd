@@ -103,8 +103,8 @@ for (y in 3:21) {
 
 myMinutes %>%
   ggplot(aes(x = year, y = avg_min_per_day)) +
-  geom_point(colour = "black", size = 3) +
-  geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = NA, color = "darkred", size = 1.5) +
+  geom_point(colour = "black", size = 3, alpha = .5) +
+  geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = NA, color = "black", size = 1.5) +
   ggtitle("Americans recreate outside for 18-19 min per day") +
   ylab("Minutes") +
   xlab("Year")+
@@ -123,13 +123,13 @@ This increasing trend may actually be driven by the COVID bump in 2020, and ther
 
 #pivot long to make graphs
 myMinutes_long <- myMinutes %>%
-  rename(Population = avg_min_per_day) %>%
+  rename(Nation = avg_min_per_day) %>%
   rename(Black = avg_min_per_day_black) %>%
   rename(White = avg_min_per_day_white) %>%
   rename(Native = avg_min_per_day_native) %>%
   rename(Asian = avg_min_per_day_asian) %>%
   rename(Islander = avg_min_per_day_island) %>%
-  pivot_longer(cols = c(Population, White, Black,Native, Islander, Asian), values_to = "avg_min") %>%
+  pivot_longer(cols = c(Nation, White, Black,Native, Islander, Asian), values_to = "avg_min") %>%
   select(year, name, avg_min) %>%
   rename(Race = name)
 
@@ -317,7 +317,7 @@ myTC <- left_join(myTC, myPop, by = "year") %>%
   mutate(annual_TC_variance = (avg_travel_cost_0*population)^2*variance) %>%
   mutate(annual_TC_SE = sqrt(annual_TC_variance)) %>%
   mutate(annual_TC_CI = 1.96*annual_TC_SE) %>%
-  mutate(race = "Population")
+  mutate(race = "Nation")
 
 
 
@@ -421,9 +421,6 @@ myTC_race_graph <- myTC_race %>%
   mutate(annual_TC_SE_bill = annual_TC_SE/1000000000) %>%
   bind_rows(myTC_graph)
 
-
-  
-
   # break down by race
   # 1 White only
   # 2 Black only
@@ -432,8 +429,6 @@ myTC_race_graph <- myTC_race %>%
   # 5 Hawaiian/Pacific Islander only 
   # https://www.bls.gov/tus/atuscpscodebk14.pdf
   
-
-
 myTC_race_graph %>%
   ggplot(aes(x = year, y = annual_TC_value_bill, colour = race)) +
   geom_point(size = 2, alpha = .25) +
@@ -461,22 +456,65 @@ making the assumption that people who report their weekly earnings are represent
 
 # Tables 
 ```{r, results='asis', echo=FALSE, message=FALSE}
+# -----------------------------------------------------------------------------
+# Table 1 
+# -----------------------------------------------------------------------------
 
-#Combine race with average 
-
-myTable <- bind_rows(myTC, myTC_race) %>%
+myTable_1 <- myTC %>%
   select(race, year, avg_travel_cost_0, standard_error, annual_TC_value, annual_TC_SE) %>%
-  mutate(avg_travel_cost_0 = round(avg_travel_cost_0, 2))%>%
+  mutate(avg_travel_cost_0 = round(avg_travel_cost_0, 3))%>%
   mutate(standard_error = round(standard_error, 3))%>% 
-  mutate(annual_TC_value_bill = round(annual_TC_value / 1e9,2)) %>%
-  mutate(annual_TC_SE_bill = round(annual_TC_SE / 1e9, 3))
+  mutate(annual_TC_value_bill = round(annual_TC_value / 1e9,3)) %>%
+  mutate(annual_TC_SE_bill = round(annual_TC_SE / 1e9, 3)) %>%
+  select(race, year, avg_travel_cost_0, standard_error, annual_TC_value_bill, annual_TC_SE_bill) %>%
+  select(!race) %>%
+  rename(`Daily Value` = avg_travel_cost_0) %>%
+  rename(`Std. Err.` = standard_error) %>%
+  rename(`Annual Value (Bill. $)` = annual_TC_value_bill) %>%
+  rename(`Std. Err` = annual_TC_SE_bill)
 
+myTable_1 %>%
+  stargazer(title = "Table 1: National Estimates of Daily Recreation Value and Annual Value",
+            summary = FALSE, 
+            digit.separator= "", 
+            out = "figures/tables/National.htm")
+
+
+# -----------------------------------------------------------------------------
+# Tables 
+# -----------------------------------------------------------------------------
+
+i <- 1
+for (r in c("White", "Black", "Native", "Asian", "Islander")) {
+  i <- i + 1
+  
+  temp_table <- myTC_race %>%
+    filter(race == r) %>%
+    select(!race) %>%
+    mutate(avg_travel_cost_0 = round(avg_travel_cost_0, 3))%>%
+    mutate(standard_error = round(standard_error, 3))%>% 
+    mutate(annual_TC_value_bill = round(annual_TC_value / 1e9,3)) %>%
+    mutate(annual_TC_SE_bill = round(annual_TC_SE / 1e9, 3)) %>%
+    select(year, avg_travel_cost_0, standard_error, annual_TC_value_bill, annual_TC_SE_bill) %>%
+    rename(`Daily Value` = avg_travel_cost_0) %>%
+    rename(`Std. Err.` = standard_error) %>%
+    rename(`Annual Value (Bill. $)` = annual_TC_value_bill) %>%
+    rename(`Std. Err` = annual_TC_SE_bill)
   
 
-myTable %>%
-  kbl() %>%
-  kable_classic_2(full_width = F)
+  
+  temp_title <- paste0("Table ", i, ": Daily Value and Counter Factual Annual Value: ", r)
+  temp_file_name <- paste0("figures/tables/", r, ".htm")
+  
+  temp_table %>%
+  stargazer(title = temp_title,
+            summary = FALSE, 
+            digit.separator= "", 
+            out = temp_file_name)
 
+  rm(temp_title, temp_table, temp_file_name)
+}
+rm(i)
 
 ```
 
