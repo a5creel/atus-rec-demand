@@ -143,7 +143,7 @@ ggplot(myMinutes_long, aes(x = year, y = avg_min, colour = Race)) +
   theme_bw() + 
   theme(text = element_text(size=17)) +
   coord_cartesian(ylim = c(0, 30))+  #zoom
-    scale_color_manual(values=c('darkcyan', 'darkgoldenrod4', 'darkmagenta', 'darkolivegreen4', 'black', 'darkred'))
+    scale_color_manual(values=c('darkcyan', 'darkgoldenrod4', 'darkmagenta',  'black', 'darkolivegreen4','darkred'))
 
 
 ggsave(width = 11, height = 8, filename = "figures/minutes-race.jpeg")
@@ -440,7 +440,7 @@ myTC_race_graph %>%
   theme_bw() +
   theme(text = element_text(size=17)) +
   coord_cartesian(ylim = c(0, 80))+  #zoom
-    scale_color_manual(values=c('darkcyan', 'darkgoldenrod4', 'darkmagenta', 'darkolivegreen4', 'black', 'darkred'))
+    scale_color_manual(values=c('darkcyan', 'darkgoldenrod4', 'darkmagenta',  'black', 'darkolivegreen4','darkred'))
 
 ggsave(width = 11, height = 8, filename = "figures/value-race.jpeg")
 
@@ -468,23 +468,24 @@ myTable_1 <- myTC %>%
   mutate(annual_TC_SE_bill = round(annual_TC_SE / 1e9, 3)) %>%
   select(race, year, avg_travel_cost_0, standard_error, annual_TC_value_bill, annual_TC_SE_bill) %>%
   select(!race) %>%
-  rename(`Daily Value` = avg_travel_cost_0) %>%
+  rename(`Daily Value ($ 1)` = avg_travel_cost_0) %>%
   rename(`Std. Err.` = standard_error) %>%
-  rename(`Annual Value (Bill. $)` = annual_TC_value_bill) %>%
+  rename(`Ann. Value ($ Bill)` = annual_TC_value_bill) %>%
   rename(`Std. Err` = annual_TC_SE_bill)
 
 myTable_1 %>%
-  stargazer(title = "Table 1: National Estimates of Daily Recreation Value and Annual Value",
+  stargazer(title = "Table 2: National Estimates of Daily Recreation Value and Annual Value",
             summary = FALSE, 
             digit.separator= "", 
-            out = "figures/tables/National.htm")
+            out = "figures/tables/National.htm", 
+            type = "html")
 
 
 # -----------------------------------------------------------------------------
 # Tables 
 # -----------------------------------------------------------------------------
 
-i <- 1
+i <- 2
 for (r in c("White", "Black", "Native", "Asian", "Islander")) {
   i <- i + 1
   
@@ -496,9 +497,9 @@ for (r in c("White", "Black", "Native", "Asian", "Islander")) {
     mutate(annual_TC_value_bill = round(annual_TC_value / 1e9,3)) %>%
     mutate(annual_TC_SE_bill = round(annual_TC_SE / 1e9, 3)) %>%
     select(year, avg_travel_cost_0, standard_error, annual_TC_value_bill, annual_TC_SE_bill) %>%
-    rename(`Daily Value` = avg_travel_cost_0) %>%
+    rename(`Daily Value ($ 1)` = avg_travel_cost_0) %>%
     rename(`Std. Err.` = standard_error) %>%
-    rename(`Annual Value (Bill. $)` = annual_TC_value_bill) %>%
+    rename(`Ann. Value ($ Bill)` = annual_TC_value_bill) %>%
     rename(`Std. Err` = annual_TC_SE_bill)
   
 
@@ -510,11 +511,50 @@ for (r in c("White", "Black", "Native", "Asian", "Islander")) {
   stargazer(title = temp_title,
             summary = FALSE, 
             digit.separator= "", 
-            out = temp_file_name)
+            out = temp_file_name,
+            type = "html")
 
   rm(temp_title, temp_table, temp_file_name)
 }
 rm(i)
 
 ```
+
+# Summary Table
+
+```{r}
+
+myValues <- bind_rows(myTC, myTC_race) %>%
+  group_by(race) %>%
+  mutate(avg_value_annual = round(mean(annual_TC_value)/1e9, 3)) %>%
+  mutate(avg_value_daily = round(mean(avg_travel_cost_0),3)) %>%
+  select(race, avg_value_daily, avg_value_annual) %>%
+  distinct()
+
+myMin_table <- myMinutes_long %>%
+  group_by(Race) %>%
+  mutate(avg_min = round(mean(avg_min),2)) %>%
+  ungroup() %>%
+  select(Race, avg_min) %>%
+  distinct()
+
+myTable_summary <- left_join(myMin_table, myValues, by = c("Race" = "race")) %>%
+    rename(`Daily Value ($ 1)` = avg_value_daily) %>%
+    rename(`Ann. Value ($ Bill)` = avg_value_annual) %>%
+    rename(`Avg Min.` = avg_min)
+
+
+myTable_summary %>%
+  stargazer(title = "Table 1: Summary: Averages Across all Years",
+            summary = FALSE, 
+            digit.separator= "", 
+            out = "figures/tables/summary.htm", 
+            type = "html")
+
+
+```
+
+
+
+
 
