@@ -104,13 +104,15 @@ for (y in 3:21) {
 myMinutes %>%
   ggplot(aes(x = year, y = avg_min_per_day)) +
   geom_point(colour = "black", size = 3, alpha = .5) +
-  geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = NA, color = "black", size = 1.5) +
+  geom_smooth(aes(y = avg_min_per_day), method = "lm", fill = 'grey', color = "black", size = 1.5) +
   ggtitle("Americans recreate outside for 18-19 min per day") +
   ylab("Minutes") +
   xlab("Year")+
   labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
   theme_bw() + 
   theme(text = element_text(size=17))
+  # coord_cartesian(ylim = c(0, 30))  #zoom
+
  
 ggsave(width = 11, height = 8, filename = "figures/minutes.jpeg")
 ```
@@ -118,9 +120,10 @@ ggsave(width = 11, height = 8, filename = "figures/minutes.jpeg")
 This increasing trend may actually be driven by the COVID bump in 2020, and there is allegedly little trust that the 2020 weights for the ATUS survey are correct that year.
 
 
-```{r, echo=FALSE, message=FALSE}
-# Race -------------------
-
+```{r, results = 'asis', echo=FALSE, message=FALSE}
+# -----------------------------------------------------------------------------
+# plots
+# -----------------------------------------------------------------------------
 #pivot long to make graphs
 myMinutes_long <- myMinutes %>%
   rename(Nation = avg_min_per_day) %>%
@@ -136,17 +139,74 @@ myMinutes_long <- myMinutes %>%
 ggplot(myMinutes_long, aes(x = year, y = avg_min, colour = Race)) +
   geom_smooth(method = "lm", fill = NA, size = 1.5) +
   geom_point(size = 2, alpha = .25) +
-  ggtitle("Time recreating varries by race", "Black Americans recreate outdoors less") +
+  ggtitle("Time recreating varries by race", "FILL") +
   ylab("Minutes") +
   xlab("Year")+
   labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
   theme_bw() + 
   theme(text = element_text(size=17)) +
-  coord_cartesian(ylim = c(0, 30))+  #zoom
+  # coord_cartesian(ylim = c(0, 30))+  #zoom
     scale_color_manual(values=c('darkcyan', 'darkgoldenrod4', 'darkmagenta',  'black', 'darkolivegreen4','darkred'))
 
 
 ggsave(width = 11, height = 8, filename = "figures/minutes-race.jpeg")
+
+
+# -----------------------------------------------------------------------------
+# seperating out to show error 
+# -----------------------------------------------------------------------------
+
+#native and Islander
+myMinutes_long %>%
+  filter(Race == 'Islander' | Race == 'Nation' | Race == "Native" ) %>%
+  ggplot(aes(x = year, y = avg_min, colour = Race)) +
+  geom_smooth(method = "lm", fill = 'grey', size = 1.5) +
+  geom_point(size = 2, alpha = .25) +
+  ggtitle("Figure 3: Islander and Native Americans' Estimates are Variant") +
+  ylab("Minutes") +
+  xlab("Year")+
+  labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
+  theme_bw() + 
+  theme(text = element_text(size=17)) +
+  # coord_cartesian(ylim = c(0, 30))+  #zoom
+    scale_color_manual(values=c('darkmagenta',  'black', 'darkolivegreen4'))
+ggsave(width = 11, height = 8, filename = "figures/minutes-islander-native.jpeg")
+
+
+#White, asian, black
+myMinutes_long %>%
+  filter(Race == "Nation" | Race == 'White' | Race == 'Asian' | Race == 'Black') %>%
+  ggplot(aes(x = year, y = avg_min, colour = Race)) +
+  geom_smooth(method = "lm", fill = 'grey', size = 1.5) +
+  geom_point(size = 2, alpha = .25) +
+  ggtitle("Figure 2: Black Americans Recreate Less than White and Asian") +
+  ylab("Minutes") +
+  xlab("Year")+
+  labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
+  theme_bw() + 
+  theme(text = element_text(size=17)) +
+  # coord_cartesian(ylim = c(0, 30))+  #zoom
+    scale_color_manual(values=c('darkcyan', 'darkgoldenrod4', 'black', 'darkred'))
+ggsave(width = 11, height = 8, filename = "figures/minutes-white-black-asian.jpeg")
+
+
+# -----------------------------------------------------------------------------
+# Tables
+# -----------------------------------------------------------------------------
+
+one<- lm(formula  = avg_min ~ year, data = myMinutes_long %>%filter(Race == 'Nation'))
+two<- lm(formula= avg_min ~ year, data = myMinutes_long %>%filter(Race == 'White'))
+three<- lm(formula = avg_min ~ year, data = myMinutes_long %>%filter(Race == 'Black'))
+four<- lm(formula = avg_min ~ year, data = myMinutes_long %>%filter(Race == 'Asian'))
+five<- lm(formula = avg_min ~ year, data = myMinutes_long %>%filter(Race == 'Native'))
+six<- lm(formula = avg_min ~ year, data = myMinutes_long %>%filter(Race == 'Islander'))
+
+stargazer(one, two, three, four, five, six,
+          column.labels = c("Nation", "White", "Black", "Asian", "Native", "Islander"),
+          dep.var.caption = "Average Minutes Recreated Per Day",
+          dep.var.labels.include = FALSE,
+          out = 'test.htm')
+
 
 ```
 
@@ -445,6 +505,44 @@ myTC_race_graph %>%
 ggsave(width = 11, height = 8, filename = "figures/value-race.jpeg")
 
 
+# -----------------------------------------------------------------------------
+# broken down with CI 
+# -----------------------------------------------------------------------------
+#native and Islander
+myTC_race_graph %>%
+  filter(race == 'Islander' | race == 'Nation' | race == "Native" ) %>%
+  ggplot(aes(x = year, y = annual_TC_value_bill, colour = race)) +
+  geom_point(size = 2, alpha = .25) +
+  geom_smooth(method = "lm", fill = 'grey', size = 1.5) +
+  ggtitle("Figure 5: Value estimates are variant for Islander and Native Americans", "Counterfactual analysis") +
+  ylab(" Billions (2021 $) ") +
+  xlab("Year")+
+  labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
+  theme_bw() +
+  theme(text = element_text(size=17)) +
+  # coord_cartesian(ylim = c(0, 80))+  #zoom
+  scale_color_manual(values=c('darkmagenta',  'black', 'darkolivegreen4'))
+ggsave(width = 11, height = 8, filename = "figures/value-islander-native.jpeg")
+
+
+
+
+
+#White, asian, black
+myTC_race_graph %>%
+  filter(race == "Nation" | race == 'White' | race == 'Asian' | race == 'Black') %>%
+  ggplot(aes(x = year, y = annual_TC_value_bill, colour = race)) +
+  geom_point(size = 2, alpha = .25) +
+  geom_smooth(method = "lm", fill = 'grey', size = 1.5) +
+  ggtitle("Figure 4: Value estimates are lower for Black and higher for Asian Americans", "Counterfactual analysis") +
+  ylab(" Billions (2021 $) ") +
+  xlab("Year")+
+  labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
+  theme_bw() +
+  theme(text = element_text(size=17)) +
+  # coord_cartesian(ylim = c(0, 80))+  #zoom
+  scale_color_manual(values=c('darkcyan', 'darkgoldenrod4', 'black', 'darkred'))
+ggsave(width = 11, height = 8, filename = "figures/vale-white-black-asian.jpeg")
 
 ```
 
@@ -468,9 +566,9 @@ myTable_1 <- myTC %>%
   mutate(annual_TC_SE_bill = round(annual_TC_SE / 1e9, 3)) %>%
   select(race, year, avg_travel_cost_0, standard_error, annual_TC_value_bill, annual_TC_SE_bill) %>%
   select(!race) %>%
-  rename(`Daily Value ($ 1)` = avg_travel_cost_0) %>%
+  rename(`Daily Value (1 USD)` = avg_travel_cost_0) %>%
   rename(`Std. Err.` = standard_error) %>%
-  rename(`Ann. Value ($ Bill)` = annual_TC_value_bill) %>%
+  rename(`Ann. Value (Bill. USD)` = annual_TC_value_bill) %>%
   rename(`Std. Err` = annual_TC_SE_bill)
 
 myTable_1 %>%
@@ -497,9 +595,9 @@ for (r in c("White", "Black", "Native", "Asian", "Islander")) {
     mutate(annual_TC_value_bill = round(annual_TC_value / 1e9,3)) %>%
     mutate(annual_TC_SE_bill = round(annual_TC_SE / 1e9, 3)) %>%
     select(year, avg_travel_cost_0, standard_error, annual_TC_value_bill, annual_TC_SE_bill) %>%
-    rename(`Daily Value ($ 1)` = avg_travel_cost_0) %>%
+    rename(`Daily Value (1 USD)` = avg_travel_cost_0) %>%
     rename(`Std. Err.` = standard_error) %>%
-    rename(`Ann. Value ($ Bill)` = annual_TC_value_bill) %>%
+    rename(`Ann. Value (Bill. USD)` = annual_TC_value_bill) %>%
     rename(`Std. Err` = annual_TC_SE_bill)
   
 
@@ -522,7 +620,7 @@ rm(i)
 
 # Summary Table
 
-```{r}
+```{r, results='asis', echo=FALSE, message=FALSE}
 
 myValues <- bind_rows(myTC, myTC_race) %>%
   group_by(race) %>%
@@ -539,8 +637,8 @@ myMin_table <- myMinutes_long %>%
   distinct()
 
 myTable_summary <- left_join(myMin_table, myValues, by = c("Race" = "race")) %>%
-    rename(`Daily Value ($ 1)` = avg_value_daily) %>%
-    rename(`Ann. Value ($ Bill)` = avg_value_annual) %>%
+    rename(`Daily Value (1 USD)` = avg_value_daily) %>%
+    rename(`Ann. Value (Bill. USD)` = avg_value_annual) %>%
     rename(`Avg Min.` = avg_min)
 
 
