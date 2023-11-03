@@ -176,3 +176,6 @@ myPop <-vroom("raw_data/world_bank_us_pop/API_SP.POP.TOTL_DS2_en_csv_v2_4760264.
 
 vroom_write(myPop, "clean_data/USA_pop.csv")
 
+
+test<- vroom("atusact_2003.dat")
+

@@ -162,12 +162,12 @@ myMinutes_long %>%
   ggplot(aes(x = year, y = avg_min, colour = Race)) +
   geom_smooth(method = "lm", fill = 'grey', size = 1.5) +
   geom_point(size = 2, alpha = .25) +
-  ggtitle("Figure 3: Islander and Native Americans' Estimates are Variant") +
+  ggtitle("Average daily time recreating outdoors") +
   ylab("Minutes") +
   xlab("Year")+
-  labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
-  theme_bw() + 
-  theme(text = element_text(size=17)) +
+  # labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
+  theme_minimal() + 
+  theme(text = element_text(size=20)) +
   # coord_cartesian(ylim = c(0, 30))+  #zoom
     scale_color_manual(values=c('darkmagenta',  'black', 'darkolivegreen4'))
 ggsave(width = 11, height = 8, filename = "figures/minutes-islander-native.jpeg")
@@ -179,12 +179,12 @@ myMinutes_long %>%
   ggplot(aes(x = year, y = avg_min, colour = Race)) +
   geom_smooth(method = "lm", fill = 'grey', size = 1.5) +
   geom_point(size = 2, alpha = .25) +
-  ggtitle("Figure 2: Black Americans Recreate Less than White and Asian") +
+  ggtitle("Average daily time recreating outdoors") +
   ylab("Minutes") +
   xlab("Year")+
-  labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
-  theme_bw() + 
-  theme(text = element_text(size=17)) +
+  # labs(caption = "Data Source: ATUS Microdata Activity Summary files, '03-'21")+
+  theme_minimal() + 
+  theme(text = element_text(size=20)) +
   # coord_cartesian(ylim = c(0, 30))+  #zoom
     scale_color_manual(values=c('darkcyan', 'darkgoldenrod4', 'black', 'darkred'))
 ggsave(width = 11, height = 8, filename = "figures/minutes-white-black-asian.jpeg")
